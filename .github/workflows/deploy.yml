@@ -32,7 +32,6 @@ jobs:
             if ! command -v rsync &> /dev/null; then
               sudo apt update && sudo apt install -y rsync
             fi
-            EOF
       - name: 🚚 Deploy to GCP VM
         run: |
           rsync -az --delete -e "ssh -i ~/.ssh/id_rsa" ./ ${{ env.VM_USER }}@${{ env.VM_HOST }}:${{ env.PROJECT_DIR }}
@@ -57,4 +56,4 @@ jobs:
             # Subir el stack
             docker-compose down
             docker-compose up -d --build
-            EOF
+
