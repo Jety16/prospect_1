@@ -22,7 +22,7 @@ import Layout from "../layouts/Layout.astro";
 </Layout>
 
 <script>
-  const API_URL = import.meta.env.PUBLIC_API_URL || "http://localhost:5000";
+  const API_URL = import.meta.env.PUBLIC_API_URL || "http://prospect_backend:5000";
   let isConnected = false;
   let eventSource: EventSource | null = null;
 

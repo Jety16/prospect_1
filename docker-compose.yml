@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  backend:
+    container_name: prospect_backend
+    build:
+      context: ./python_backend
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./python_backend:/app
+    environment:
+      - DB_HOST=172.17.0.1
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=filesdb
+      - CORS_ALLOWED_ORIGINS=http://localhost:4321
+
+  frontend:
+    container_name: prospect_frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "4321:4321"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - PUBLIC_API_URL=http://localhost:5000
+    depends_on:
+      - backend
