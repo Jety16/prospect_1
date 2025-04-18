@@ -1,0 +1,124 @@
+---
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title}</title>
+    <style>
+      :root {
+        --font-family: Arial, sans-serif;
+        --max-width: 800px;
+        --border-color: #ccc;
+        --success-color: #d4edda;
+        --error-color: #f8d7da;
+        --text-success: #155724;
+        --text-error: #721c24;
+      }
+
+      body {
+        font-family: var(--font-family);
+        max-width: var(--max-width);
+        margin: 0 auto;
+        padding: 20px;
+      }
+
+      .container {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .upload-section, .files-section {
+        border: 1px solid var(--border-color);
+        padding: 20px;
+        border-radius: 5px;
+      }
+
+      .file-list {
+        list-style: none;
+        padding: 0;
+      }
+
+      .file-item {
+        padding: 10px;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .file-item {
+          padding: 10px;
+          border-bottom: 1px solid #eee;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+      }
+
+      .file-item:last-child {
+          border-bottom: none;
+      }
+
+      .file-info {
+          display: flex;
+          flex-direction: column;
+      }
+
+      .file-date {
+          font-size: 0.8em;
+          color: #666;
+      }
+
+      .error-message {
+        color: var(--text-error);
+        margin-top: 10px;
+        padding: 10px;
+        border: 1px solid var(--error-color);
+        border-radius: 5px;
+        display: none;
+      }
+
+      .success-message {
+        color: var(--text-success);
+        margin-top: 10px;
+        padding: 10px;
+        border: 1px solid var(--success-color);
+        border-radius: 5px;
+        display: none;
+      }
+
+      .connection-status {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        padding: 10px;
+        border-radius: 5px;
+      }
+
+      .connected {
+        background-color: var(--success-color);
+        color: var(--text-success);
+        border: 1px solid var(--success-color);
+      }
+
+      .disconnected {
+        background-color: var(--error-color);
+        color: var(--text-error);
+        border: 1px solid var(--error-color);
+      }
+    </style>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html> 

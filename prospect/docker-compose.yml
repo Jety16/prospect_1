@@ -1,0 +1,69 @@
+services:
+  database:
+    container_name: prospect_db
+    image: postgres:16
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=filesdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - prospect-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    container_name: prospect_backend
+    build:
+      context: ./python_backend
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./python_backend:/app
+    environment:
+      - PORT=5000
+      - DB_HOST=prospect_db
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=filesdb
+      - DB_PORT=5432
+      - CORS_ALLOWED_ORIGINS=http://localhost:4321
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - prospect-network
+
+  frontend:
+    container_name: prospect_frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "4321:4321"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - PUBLIC_API_URL=http://localhost:5000
+    depends_on:
+      - backend
+    networks:
+      - prospect-network
+
+networks:
+  prospect-network:
+    name: prospect-network
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
