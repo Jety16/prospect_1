@@ -34,35 +34,40 @@ jobs:
 
       - name: 🔌 Start Cloud SQL Proxy on VM
         run: |
-          ssh -i ~/.ssh/id_rsa ${{ env.VM_USER }}@${{ env.VM_HOST }} 'bash -s' << 'EOSH'
+          ssh -i ~/.ssh/id_rsa ${{ env.VM_USER }}@${{ env.VM_HOST }} << 'EOSH'
+            set -e
+            echo "🔌 Checking if Cloud SQL Proxy is running..."
             if ! pgrep -f "cloud_sql_proxy.*${CLOUD_SQL_INSTANCE}" > /dev/null; then
               echo "🔌 Starting Cloud SQL Proxy..."
-              nohup cloud_sql_proxy -dir=/cloudsql -instances=${CLOUD_SQL_INSTANCE}=tcp:5432 > cloudsql.log 2>&1 &
-              sleep 2
+              nohup cloud_sql_proxy \
+                --instances=${CLOUD_SQL_INSTANCE}=tcp:5432 \
+                --credential_file=/home/${USER}/.config/gcloud/application_default_credentials.json \
+                > cloudsql.log 2>&1 &
+              sleep 3
             else
-              echo "⚠️ Cloud SQL Proxy already running."
+              echo "✅ Cloud SQL Proxy is already running."
             fi
           EOSH
 
       - name: 🐳 Deploy Docker Compose Stack
         run: |
-          ssh -i ~/.ssh/id_rsa ${{ env.VM_USER }}@${{ env.VM_HOST }} 'bash -s' << 'EOSH'
+          ssh -i ~/.ssh/id_rsa ${{ env.VM_USER }}@${{ env.VM_HOST }} << 'EOSH'
             set -e
             cd ${{ env.PROJECT_DIR }}
 
-            # 1) Instala Docker Engine si no existe
+            echo "🧱 Installing Docker & Compose if needed..."
             if ! command -v docker &> /dev/null; then
               curl -fsSL https://get.docker.com -o get-docker.sh
               sudo sh get-docker.sh
               sudo usermod -aG docker $USER
             fi
 
-            # 2) Instala el plugin Docker Compose v2
             if ! docker compose version &> /dev/null; then
               sudo apt-get update
               sudo apt-get install -y docker-compose-plugin
             fi
 
-            # 3) Levanta el stack con `docker compose`
-            docker compose up -d --build
+            echo "🚀 Building and starting app stack..."
+            sudo docker compose down
+            sudo docker compose up -d --build
           EOSH
