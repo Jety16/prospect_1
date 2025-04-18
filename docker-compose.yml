@@ -2,13 +2,15 @@ version: '3.8'
 
 services:
   cloudsql-proxy:
-    image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.15.2
-    command:
-      - "/cloud_sql_proxy"
-      - "--instances=cloud-engineer-test-juanc:us-central1:files=tcp:5432"
-      - "--credentials=/secrets/cloudsql/credentials.json"
-    volumes:
-      - ./secrets/cloudsql:/secrets/cloudsql:ro
+  image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.15.2
+  command:
+    - "cloud-sql-proxy"
+    - "cloud-engineer-test-juanc:us-central1:files"
+    - "--port=5432"
+    - "--credentials-file=/secrets/cloudsql/credentials.json"
+  volumes:
+    - ./secrets/cloudsql:/secrets/cloudsql:ro
+
 
   backend:
     container_name: prospect_backend
@@ -22,7 +24,7 @@ services:
     depends_on:
       - cloudsql-proxy
     environment:
-      - DB_HOST=cloudsql-proxy
+      - DB_HOST=172.17.0.1 
       - DB_PORT=5432
       - DB_USER=postgres
       - DB_PASSWORD=postgres
