@@ -16,7 +16,6 @@ services:
       - DB_USER=postgres
       - DB_PASSWORD=postgres
       - DB_NAME=filesdb
-      - CORS_ALLOWED_ORIGINS=http://localhost:4321
 
   frontend:
     container_name: prospect_frontend
@@ -29,6 +28,6 @@ services:
       - ./frontend:/app
       - /app/node_modules
     environment:
-      - PUBLIC_API_URL=http://localhost:5000
+      - PUBLIC_API_URL=http://backend:5000 
     depends_on:
       - backend
