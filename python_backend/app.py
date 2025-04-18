@@ -74,35 +74,55 @@ with app.app_context():
         logger.error(f"Error al crear las tablas: {str(e)}")
 
 # Función Document AI
+import re
+
 def extract_from_document_ai(file_bytes):
     try:
         client = documentai.DocumentProcessorServiceClient()
         name = f"projects/{project_id}/locations/{location}/processors/{processor_id}"
 
         document = {"content": file_bytes, "mime_type": "application/pdf"}
-        print(document)
         request = documentai.ProcessRequest(name=name, raw_document=document)
-        print(request)
         result = client.process_document(request=request)
-        print(result)
+        doc = result.document
 
-        text = result.document.text
-        logger.info("Texto extraído del documento")
+        full_text = doc.text
+        logger.info("Texto completo extraído del documento")
 
-        # Extracción simple de campos
-        def find_value(label):
-            if label in text:
-                return text.split(label)[1].splitlines()[0].strip()
-            return None
+        # 💡 Imprimir para debug
+        # print(full_text)
 
-        nombre = find_value("Nombre:")
-        total = find_value("Total:")
-        rmu = find_value("RMU:")
+        # 🔍 Buscar datos usando regex o patrones simples
+        nombre = None
+        total = None
+        rmu = None
+
+        # Ejemplo: encontrar línea que contiene "RMU:"
+        rmu_match = re.search(r"RMU:\s*(.+)", full_text)
+        if rmu_match:
+            rmu = rmu_match.group(1).strip()
+
+        # Total (más robusto si usamos patrón de dinero en MXN)
+        total_match = re.search(r"TOTAL A PAGAR:\s*\$?([\d,]+\.\d{2})", full_text)
+        if total_match:
+            total = total_match.group(1).strip()
+
+        # Nombre de compañía o entidad (ej: CFE o Banjercito)
+        # Buscar algo con "RFC:" seguido de nombre
+        nombre_match = re.search(r"RFC:\s*(.+?)\s", full_text)
+        if nombre_match:
+            nombre = nombre_match.group(1).strip()
+
+        logger.info(f"Nombre extraído: {nombre}")
+        logger.info(f"Total extraído: {total}")
+        logger.info(f"RMU extraído: {rmu}")
 
         return nombre, total, rmu
+
     except Exception as e:
         logger.error(f"Error en Document AI: {str(e)}")
         return None, None, None
+
 
 # SSE
 def generate_events():
