@@ -1,24 +1,33 @@
 version: '3.8'
 
 services:
+  cloudsql-proxy:
+    image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.15.2
+    command:
+      - "/cloud_sql_proxy"
+      - "--instances=cloud-engineer-test-juanc:us-central1:files=tcp:5432"
+      - "--credentials=/secrets/cloudsql/credentials.json"
+    volumes:
+      - ./secrets/cloudsql:/secrets/cloudsql:ro
+    # uses the distroless proxy image with IAM & TLS authentication :contentReference[oaicite:0]{index=0}
+
   backend:
     container_name: prospect_backend
     build:
       context: ./python_backend
       dockerfile: Dockerfile
-    network_mode: "host"
     ports:
       - "5000:5000"
     volumes:
       - ./python_backend:/app
-      - /cloudsql:/cloudsql
+    depends_on:
+      - cloudsql-proxy
     environment:
-      - DB_HOST=/cloudsql/cloud-engineer-test-juanc:us-central1:files
-      - PORT=8080
+      - DB_HOST=cloudsql-proxy        # service name resolution over Compose network :contentReference[oaicite:1]{index=1}
+      - DB_PORT=5432
       - DB_USER=postgres
       - DB_PASSWORD=postgres
       - DB_NAME=filesdb
-      - DB_PORT=5432
       - CORS_ALLOWED_ORIGINS=http://localhost:4321
 
   frontend:
@@ -35,10 +44,6 @@ services:
       - PUBLIC_API_URL=http://localhost:5000
     depends_on:
       - backend
-    networks:
-      - prospect-network
 
-networks:
-  prospect-network:
-    name: prospect-network
-    driver: bridge
+volumes:
+  # no external volumes needed for proxy when using TCP

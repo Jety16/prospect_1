@@ -2,72 +2,47 @@ name: 🚀 Deploy Fullstack App to GCP VM with Docker Compose + Cloud SQL Proxy
 
 on:
   push:
-    branches:
-      - produccion
+    branches: [ produccion ]
 
 env:
   VM_USER: github-deploy
   VM_HOST: ${{ secrets.VM_HOST }}
   PROJECT_DIR: /home/github-deploy/prospect-app
-  CLOUD_SQL_INSTANCE: cloud-engineer-test-juanc:us-central1:files
 
 jobs:
   deploy:
-    name: 🔄 Deploy to VM with Cloud SQL Proxy
     runs-on: ubuntu-latest
-    environment: deploy
 
     steps:
-      - name: 📥 Checkout code
-        uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      - name: 🔐 Setup SSH key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.GCP_SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ env.VM_HOST }} >> ~/.ssh/known_hosts
+    - name: Setup SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.GCP_SSH_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ env.VM_HOST }} >> ~/.ssh/known_hosts
 
-      - name: 🚚 Sync Project to VM
-        run: |
-          rsync -az --delete -e "ssh -i ~/.ssh/id_rsa" ./ ${{ env.VM_USER }}@${{ env.VM_HOST }}:${{ env.PROJECT_DIR }}
+    - name: Sync project to VM
+      run: |
+        rsync -az --delete -e "ssh -i ~/.ssh/id_rsa" \
+        ./ ${{ env.VM_USER }}@${{ env.VM_HOST }}:${{ env.PROJECT_DIR }}
 
-      - name: 🔌 Start Cloud SQL Proxy on VM
-        run: |
-          ssh -i ~/.ssh/id_rsa ${{ env.VM_USER }}@${{ env.VM_HOST }} << 'EOSH'
-            set -e
-            echo "🔌 Checking if Cloud SQL Proxy is running..."
-            if ! pgrep -f "cloud_sql_proxy.*${CLOUD_SQL_INSTANCE}" > /dev/null; then
-              echo "🔌 Starting Cloud SQL Proxy..."
-              nohup cloud_sql_proxy \
-                --instances=${CLOUD_SQL_INSTANCE}=tcp:5432 \
-                --credential_file=/home/${USER}/.config/gcloud/application_default_credentials.json \
-                > cloudsql.log 2>&1 &
-              sleep 3
-            else
-              echo "✅ Cloud SQL Proxy is already running."
-            fi
-          EOSH
+    - name: Write Cloud SQL credentials on VM
+      run: |
+        ssh -i ~/.ssh/id_rsa ${{ env.VM_USER }}@${{ env.VM_HOST }} << 'EOF'
+          mkdir -p ${{ env.PROJECT_DIR }}/secrets/cloudsql
+          cat << 'JSON' > ${{ env.PROJECT_DIR }}/secrets/cloudsql/credentials.json
+          ${{ secrets.GCP_CREDENTIALS_JSON }}
+          JSON
+          EOF
 
-      - name: 🐳 Deploy Docker Compose Stack
-        run: |
-          ssh -i ~/.ssh/id_rsa ${{ env.VM_USER }}@${{ env.VM_HOST }} << 'EOSH'
-            set -e
-            cd ${{ env.PROJECT_DIR }}
-
-            echo "🧱 Installing Docker & Compose if needed..."
-            if ! command -v docker &> /dev/null; then
-              curl -fsSL https://get.docker.com -o get-docker.sh
-              sudo sh get-docker.sh
-              sudo usermod -aG docker $USER
-            fi
-
-            if ! docker compose version &> /dev/null; then
-              sudo apt-get update
-              sudo apt-get install -y docker-compose-plugin
-            fi
-
-            echo "🚀 Building and starting app stack..."
-            sudo docker compose down
-            sudo docker compose up -d --build
-          EOSH
+    - name: Deploy with Docker Compose
+      run: |
+        ssh -i ~/.ssh/id_rsa ${{ env.VM_USER }}@${{ env.VM_HOST }} << 'EOF'
+          set -e
+          cd ${{ env.PROJECT_DIR }}
+          sudo docker compose down
+          sudo docker compose up -d --build
+          EOF
