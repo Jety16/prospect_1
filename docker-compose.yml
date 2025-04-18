@@ -6,8 +6,8 @@ services:
     build:
       context: ./python_backend
       dockerfile: Dockerfile
-    expose:
-      - "5000"
+    ports:
+      - "5000:5000"
     volumes:
       - ./python_backend:/app
     environment:
@@ -22,24 +22,13 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    expose:
-      - "4321"
+    ports:
+      - "4321:4321"
     volumes:
       - ./frontend:/app
       - /app/node_modules
     environment:
-      - PUBLIC_API_URL=/api
-      - VITE_PUBLIC_API_URL=/api
+      - PUBLIC_API_URL=http://backend:5000 
+      - VITE_PUBLIC_API_URL=http://backend:5000
     depends_on:
-      - backend
-
-  nginx:
-    image: nginx:latest
-    container_name: prospect_nginx
-    volumes:
-      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
-    ports:
-      - "80:80"
-    depends_on:
-      - frontend
       - backend

@@ -20,21 +20,27 @@ import Layout from "../layouts/Layout.astro";
     </div>
   </div>
 </Layout>
-<script>
-  const API_BASE = location.origin;
-  let isConnected = false;
-  let eventSource = null;
 
-  function updateConnectionStatus(connected) {
+<script>
+  const API_URL = import.meta.env.PUBLIC_API_URL || "http://prospect_backend:5000";
+  let isConnected = false;
+  let eventSource: EventSource | null = null;
+
+  function updateConnectionStatus(connected: boolean) {
     const statusElement = document.getElementById("connectionStatus");
     if (!statusElement) return;
 
     isConnected = connected;
-    statusElement.textContent = connected ? "Conectado" : "Desconectado";
-    statusElement.className = `connection-status ${connected ? "connected" : "disconnected"}`;
+    if (connected) {
+      statusElement.textContent = "Conectado";
+      statusElement.className = "connection-status connected";
+    } else {
+      statusElement.textContent = "Desconectado";
+      statusElement.className = "connection-status disconnected";
+    }
   }
 
-  function showMessage(element, message) {
+  function showMessage(element: HTMLElement | null, message: string) {
     if (!element) return;
     element.textContent = message;
     element.style.display = "block";
@@ -43,11 +49,12 @@ import Layout from "../layouts/Layout.astro";
     }, 5000);
   }
 
-  function updateFileList(files) {
+  function updateFileList(files: any[]) {
     const fileList = document.getElementById("fileList");
     if (!fileList) return;
 
     fileList.innerHTML = "";
+
     files.forEach((file) => {
       const li = document.createElement("li");
       li.className = "file-item";
@@ -74,8 +81,8 @@ import Layout from "../layouts/Layout.astro";
       eventSource.close();
     }
 
-    console.log("Intentando conectar a:", `${API_BASE}/events`);
-    eventSource = new EventSource(`${API_BASE}/events`);
+    console.log("Intentando conectar a:", `${API_URL}/events`);
+    eventSource = new EventSource(`${API_URL}/events`);
 
     eventSource.onopen = () => {
       console.log("Conexión SSE establecida con el servidor");
@@ -97,18 +104,23 @@ import Layout from "../layouts/Layout.astro";
     eventSource.onerror = (error) => {
       console.error("Error en la conexión SSE:", error);
       updateConnectionStatus(false);
-      if (eventSource) eventSource.close();
+      if (eventSource) {
+        eventSource.close();
+      }
       setTimeout(connectToServer, 5000);
     };
   }
 
   async function uploadFile() {
     if (!isConnected) {
-      showMessage(document.getElementById("errorMessage"), "No hay conexión con el servidor");
+      showMessage(
+        document.getElementById("errorMessage"),
+        "No hay conexión con el servidor",
+      );
       return;
     }
 
-    const fileInput = document.getElementById("fileInput");
+    const fileInput = document.getElementById("fileInput") as HTMLInputElement;
     const errorMessage = document.getElementById("errorMessage");
     const successMessage = document.getElementById("successMessage");
 
@@ -124,30 +136,44 @@ import Layout from "../layouts/Layout.astro";
     formData.append("file", file);
 
     try {
-      const response = await fetch(`${API_BASE}/api/upload`, {
+      console.log("Intentando subir archivo a:", `${API_URL}/upload`);
+      const response = await fetch(`${API_URL}/upload`, {
         method: "POST",
+        mode: "cors",
         body: formData,
       });
 
+      console.log("Respuesta recibida:", response.status);
       const data = await response.json();
+      console.log("Datos recibidos:", data);
 
       if (response.ok) {
-        showMessage(successMessage, data.message || "Archivo subido exitosamente");
+        showMessage(
+          successMessage,
+          data.message || "Archivo subido exitosamente",
+        );
         fileInput.value = "";
       } else {
         showMessage(errorMessage, data.error || "Error al subir el archivo");
       }
     } catch (error) {
       console.error("Error en la subida:", error);
-      showMessage(errorMessage, "Error al subir el archivo. Verifica la conexión con el servidor.");
+      showMessage(
+        errorMessage,
+        "Error al subir el archivo. Verifica la conexión con el servidor.",
+      );
       updateConnectionStatus(false);
     }
   }
 
   document.addEventListener("DOMContentLoaded", () => {
+    console.log("DOM cargado, iniciando conexión...");
     connectToServer();
+
     const uploadButton = document.getElementById("uploadButton");
-    if (uploadButton) uploadButton.addEventListener("click", uploadFile);
+    if (uploadButton) {
+      uploadButton.addEventListener("click", uploadFile);
+    }
   });
 </script>
 
