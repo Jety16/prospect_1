@@ -16,6 +16,9 @@ services:
       - DB_USER=postgres
       - DB_PASSWORD=postgres
       - DB_NAME=filesdb
+      - PROJECT_ID=cloud-engineer-test-juanc
+      - LOCATION=us-central1-a
+      - PROCESSOR_ID=1e60d3bd63a0d751
 
   frontend:
     container_name: prospect_frontend

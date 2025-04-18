@@ -9,6 +9,8 @@ import time
 import json
 from dotenv import load_dotenv
 
+from google.cloud import documentai_v1 as documentai
+
 load_dotenv()
 
 logging.basicConfig(
@@ -21,6 +23,7 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
+# Configuración de DB
 db_host = os.getenv('DB_HOST')
 db_port = os.getenv('DB_PORT', '5432')
 db_name = os.getenv('DB_NAME')
@@ -30,15 +33,24 @@ db_password = os.getenv('DB_PASSWORD')
 app.config['SQLALCHEMY_DATABASE_URI'] = (
     f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
 )
-
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
+# Configuración de Document AI
+project_id = "227652139161"
+location = "us"
+processor_id = "1e60d3bd63a0d751"
+
+# Modelo
 class File(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     filename = db.Column(db.String(255), nullable=False)
     content = db.Column(db.LargeBinary, nullable=False)
     uploaded_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    nombre = db.Column(db.String(255))
+    total = db.Column(db.String(100))
+    rmu = db.Column(db.String(100))
 
     def __repr__(self):
         return f'<File {self.filename}>'
@@ -47,9 +59,13 @@ class File(db.Model):
         return {
             'id': self.id,
             'filename': self.filename,
-            'uploaded_at': self.uploaded_at.isoformat()
+            'uploaded_at': self.uploaded_at.isoformat(),
+            'nombre': self.nombre,
+            'total': self.total,
+            'rmu': self.rmu
         }
 
+# Crear tablas
 with app.app_context():
     try:
         db.create_all()
@@ -57,10 +73,41 @@ with app.app_context():
     except Exception as e:
         logger.error(f"Error al crear las tablas: {str(e)}")
 
+# Función Document AI
+def extract_from_document_ai(file_bytes):
+    try:
+        client = documentai.DocumentProcessorServiceClient()
+        name = f"projects/{project_id}/locations/{location}/processors/{processor_id}"
+
+        document = {"content": file_bytes, "mime_type": "application/pdf"}
+        print(document)
+        request = documentai.ProcessRequest(name=name, raw_document=document)
+        print(request)
+        result = client.process_document(request=request)
+        print(result)
+
+        text = result.document.text
+        logger.info("Texto extraído del documento")
+
+        # Extracción simple de campos
+        def find_value(label):
+            if label in text:
+                return text.split(label)[1].splitlines()[0].strip()
+            return None
+
+        nombre = find_value("Nombre:")
+        total = find_value("Total:")
+        rmu = find_value("RMU:")
+
+        return nombre, total, rmu
+    except Exception as e:
+        logger.error(f"Error en Document AI: {str(e)}")
+        return None, None, None
+
+# SSE
 def generate_events():
     try:
         yield "data: {}\n\n"
-        
         last_files = set()
         while True:
             try:
@@ -116,24 +163,29 @@ def upload_file():
             return jsonify({'error': 'No se seleccionó ningún archivo'}), 400
         
         if file:
-            try:
-                content = file.read()
-                logger.info(f"Archivo {file.filename} leído correctamente")
-                
-                new_file = File(filename=file.filename, content=content)
-                db.session.add(new_file)
-                db.session.commit()
-                logger.info(f"Archivo {file.filename} guardado en la base de datos")
-                
-                return jsonify({'message': 'Archivo subido exitosamente'}), 200
-            except Exception as e:
-                db.session.rollback()
-                logger.error(f"Error al guardar el archivo en la base de datos: {str(e)}")
-                return jsonify({'error': f'Error al guardar el archivo: {str(e)}'}), 500
+            content = file.read()
+            logger.info(f"Archivo {file.filename} leído correctamente")
+
+            # Procesar con Document AI
+            nombre, total, rmu = extract_from_document_ai(content)
+
+            new_file = File(
+                filename=file.filename,
+                content=content,
+                nombre=nombre,
+                total=total,
+                rmu=rmu
+            )
+            db.session.add(new_file)
+            db.session.commit()
+            logger.info(f"Archivo {file.filename} guardado y procesado")
+
+            return jsonify({'message': 'Archivo subido y procesado exitosamente'}), 200
     except Exception as e:
+        db.session.rollback()
         logger.error(f"Error general al procesar la solicitud: {str(e)}")
         return jsonify({'error': f'Error al procesar la solicitud: {str(e)}'}), 500
 
 if __name__ == '__main__':
     logger.info("Iniciando servidor Flask...")
-    app.run(host='0.0.0.0', port=5000, debug=True) 
+    app.run(host='0.0.0.0', port=5000, debug=True)
