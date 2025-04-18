@@ -91,7 +91,7 @@ def events():
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response
 
-@app.route('/files', methods=['GET'])
+@app.route('/api/files', methods=['GET'])
 def list_files():
     try:
         files = File.query.all()
@@ -100,7 +100,7 @@ def list_files():
         logger.error(f"Error al listar archivos: {str(e)}")
         return jsonify({'error': f'Error al listar archivos: {str(e)}'}), 500
 
-@app.route('/upload', methods=['POST', 'OPTIONS'])
+@app.route('/api/upload', methods=['POST', 'OPTIONS'])
 def upload_file():
     if request.method == 'OPTIONS':
         return '', 200
