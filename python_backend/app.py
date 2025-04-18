@@ -22,7 +22,7 @@ app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 db_host = os.getenv('DB_HOST')           # 'cloudsql-proxy'
-db_port = os.getenv('DB_PORT', '8080')   # '5432'
+db_port = os.getenv('DB_PORT', '5432')   # '5432'
 db_name = os.getenv('DB_NAME')
 db_user = os.getenv('DB_USER')
 db_password = os.getenv('DB_PASSWORD')
