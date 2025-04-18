@@ -22,7 +22,8 @@ import Layout from "../layouts/Layout.astro";
 </Layout>
 
 <script>
-  const API_URL = import.meta.env.PUBLIC_API_URL || "http://prospect_backend:5000";
+  const API_URL = "/api";
+
   let isConnected = false;
   let eventSource: EventSource | null = null;
 
@@ -82,7 +83,7 @@ import Layout from "../layouts/Layout.astro";
     }
 
     console.log("Intentando conectar a:", `${API_URL}/events`);
-    eventSource = new EventSource(`${API_URL}/events`);
+    eventSource = new EventSource(`/events`);
 
     eventSource.onopen = () => {
       console.log("Conexión SSE establecida con el servidor");
@@ -137,11 +138,7 @@ import Layout from "../layouts/Layout.astro";
 
     try {
       console.log("Intentando subir archivo a:", `${API_URL}/upload`);
-      const response = await fetch(`${API_URL}/upload`, {
-        method: "POST",
-        mode: "cors",
-        body: formData,
-      });
+      const response = await fetch(`/api/upload`, { method: "POST", body: formData });
 
       console.log("Respuesta recibida:", response.status);
       const data = await response.json();
