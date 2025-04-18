@@ -1,0 +1,54 @@
+name: 🚀 Deploy Fullstack App to GCP VM with Docker Compose
+
+on:
+  push:
+    branches:
+      - produccion
+
+env:
+  VM_USER: github-deploy
+  VM_HOST: YOUR_VM_EXTERNAL_IP
+  PROJECT_DIR: /home/github-deploy/prospect-app
+
+jobs:
+  deploy:
+    name: 🔄 Deploy to VM (Docker Compose)
+    runs-on: ubuntu-latest
+    environment: deploy
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v3
+
+      - name: 🔐 Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.GCP_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ env.VM_HOST }} >> ~/.ssh/known_hosts
+
+      - name: 🚚 Deploy to GCP VM
+        run: |
+          rsync -az --delete -e "ssh -i ~/.ssh/id_rsa" ./ ${{ env.VM_USER }}@${{ env.VM_HOST }}:${{ env.PROJECT_DIR }}
+
+          ssh -i ~/.ssh/id_rsa ${{ env.VM_USER }}@${{ env.VM_HOST }} << EOF
+            cd ${{ env.PROJECT_DIR }}
+
+            # Instalar Docker si no está (por si acaso)
+            if ! command -v docker &> /dev/null; then
+              curl -fsSL https://get.docker.com -o get-docker.sh
+              sudo sh get-docker.sh
+              sudo usermod -aG docker $USER
+              newgrp docker
+            fi
+
+            # Instalar docker-compose si no está
+            if ! command -v docker-compose &> /dev/null; then
+              sudo apt-get update
+              sudo apt-get install -y docker-compose
+            fi
+
+            # Subir el stack
+            docker-compose down
+            docker-compose up -d --build
+EOF
