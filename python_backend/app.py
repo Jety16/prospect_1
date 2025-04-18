@@ -206,6 +206,18 @@ def upload_file():
         logger.error(f"Error general al procesar la solicitud: {str(e)}")
         return jsonify({'error': f'Error al procesar la solicitud: {str(e)}'}), 500
 
+@app.route('/drop_all_tables', methods=['POST'])
+def drop_all_tables():
+    try:
+        with app.app_context():
+            # Drop all tables
+            db.drop_all()
+            logger.info("Todas las tablas han sido eliminadas.")
+            return jsonify({'message': 'Todas las tablas han sido eliminadas.'}), 200
+    except Exception as e:
+        logger.error(f"Error al eliminar las tablas: {str(e)}")
+        return jsonify({'error': f'Error al eliminar las tablas: {str(e)}'}), 500
+
 if __name__ == '__main__':
     logger.info("Iniciando servidor Flask...")
     app.run(host='0.0.0.0', port=5000, debug=True)
