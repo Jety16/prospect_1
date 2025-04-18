@@ -136,5 +136,5 @@ def upload_file():
         return jsonify({'error': f'Error al procesar la solicitud: {str(e)}'}), 500
 
 if __name__ == '__main__':
-    logger.info("Iniciando servidor Flask en 0.0.0.0:8080...")
-    app.run(host='0.0.0.0', port=int(os.getenv('PORT', 8080)), debug=True)
+    logger.info("Iniciando servidor Flask en 0.0.0.0:5000...")
+    app.run(host='0.0.0.0', port=int(os.getenv('PORT', 5000)), debug=True)

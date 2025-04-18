@@ -5,7 +5,7 @@ services:
     image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.15.2
     command:
       - "/cloud-sql-proxy"
-      - "--instances=cloud-engineer-test-juanc:us-central1:files=tcp:5432"
+      - "--instances=cloud-engineer-test-juanc:us-central1:files=tcp:8080"
     networks:
       - prospect-network
 
@@ -15,12 +15,12 @@ services:
       context: ./python_backend
       dockerfile: Dockerfile
     ports:
-      - "8080:8080"
+      - "5000:5000"
     volumes:
       - ./python_backend:/app
     environment:
       - DB_HOST=cloudsql-proxy
-      - DB_PORT=5432
+      - DB_PORT=8080
       - DB_USER=postgres
       - DB_PASSWORD=postgres
       - DB_NAME=filesdb
@@ -42,7 +42,7 @@ services:
       - ./frontend:/app
       - /app/node_modules
     environment:
-      - PUBLIC_API_URL=http://localhost:8080
+      - PUBLIC_API_URL=http://localhost:5000
     depends_on:
       - backend
     networks:
