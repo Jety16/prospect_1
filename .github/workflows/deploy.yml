@@ -1,4 +1,4 @@
-name: 🚀 Deploy Fullstack App to GCP VM with Docker Compose
+name: 🚀 Deploy Fullstack App to GCP VM with Docker Compose + Cloud SQL Proxy
 
 on:
   push:
@@ -9,10 +9,11 @@ env:
   VM_USER: github-deploy
   VM_HOST: ${{ secrets.VM_HOST }}
   PROJECT_DIR: /home/github-deploy/prospect-app
+  CLOUD_SQL_INSTANCE: cloud-engineer-test-juanc:us-central1:files
 
 jobs:
   deploy:
-    name: 🔄 Deploy to VM (Docker Compose)
+    name: 🔄 Deploy to VM with Cloud SQL Proxy
     runs-on: ubuntu-latest
     environment: deploy
 
@@ -26,20 +27,38 @@ jobs:
           echo "${{ secrets.GCP_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ env.VM_HOST }} >> ~/.ssh/known_hosts
-      - name: 🛠️ Ensure rsync is installed in VM
+
+      - name: 🛠️ Ensure rsync is installed on VM
         run: |
-          ssh -i ~/.ssh/id_rsa ${{ env.VM_USER }}@${{ env.VM_HOST }} << EOF
+          ssh -i ~/.ssh/id_rsa ${{ env.VM_USER }}@${{ env.VM_HOST }} << 'EOF'
             if ! command -v rsync &> /dev/null; then
               sudo apt update && sudo apt install -y rsync
             fi
-      - name: 🚚 Deploy to GCP VM
+EOF
+
+      - name: 🚚 Sync Project to VM
         run: |
           rsync -az --delete -e "ssh -i ~/.ssh/id_rsa" ./ ${{ env.VM_USER }}@${{ env.VM_HOST }}:${{ env.PROJECT_DIR }}
 
+      - name: 🧠 Start Cloud SQL Proxy on VM
+        run: |
+          ssh -i ~/.ssh/id_rsa ${{ env.VM_USER }}@${{ env.VM_HOST }} << EOF
+            if ! pgrep -f "cloud_sql_proxy.*${{ env.CLOUD_SQL_INSTANCE }}" > /dev/null; then
+              echo "🔌 Starting Cloud SQL Proxy..."
+              nohup cloud_sql_proxy -dir=/cloudsql -instances=${{ env.CLOUD_SQL_INSTANCE }}=tcp:5432 > cloudsql.log 2>&1 &
+              sleep 2
+              echo "✅ Proxy started."
+            else
+              echo "⚠️ Cloud SQL Proxy already running."
+            fi
+EOF
+
+      - name: 🐳 Deploy Docker Compose Stack
+        run: |
           ssh -i ~/.ssh/id_rsa ${{ env.VM_USER }}@${{ env.VM_HOST }} << EOF
             cd ${{ env.PROJECT_DIR }}
 
-            # Instalar Docker si no está (por si acaso)
+            # Install Docker if missing
             if ! command -v docker &> /dev/null; then
               curl -fsSL https://get.docker.com -o get-docker.sh
               sudo sh get-docker.sh
@@ -47,13 +66,12 @@ jobs:
               newgrp docker
             fi
 
-            # Instalar docker-compose si no está
+            # Install Docker Compose if missing
             if ! command -v docker-compose &> /dev/null; then
               sudo apt-get update
               sudo apt-get install -y docker-compose
             fi
 
-            # Subir el stack
+            # Deploy stack
             docker-compose down
             docker-compose up -d --build
-
