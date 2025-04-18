@@ -9,7 +9,6 @@ services:
       - "--credentials=/secrets/cloudsql/credentials.json"
     volumes:
       - ./secrets/cloudsql:/secrets/cloudsql:ro
-    # uses the distroless proxy image with IAM & TLS authentication :contentReference[oaicite:0]{index=0}
 
   backend:
     container_name: prospect_backend
@@ -23,7 +22,7 @@ services:
     depends_on:
       - cloudsql-proxy
     environment:
-      - DB_HOST=cloudsql-proxy        # service name resolution over Compose network :contentReference[oaicite:1]{index=1}
+      - DB_HOST=cloudsql-proxy
       - DB_PORT=5432
       - DB_USER=postgres
       - DB_PASSWORD=postgres
@@ -44,6 +43,3 @@ services:
       - PUBLIC_API_URL=http://localhost:5000
     depends_on:
       - backend
-
-volumes:
-  # no external volumes needed for proxy when using TCP
