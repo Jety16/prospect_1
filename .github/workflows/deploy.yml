@@ -51,4 +51,4 @@ jobs:
             # Subir el stack
             docker-compose down
             docker-compose up -d --build
-EOF
+            EOF
