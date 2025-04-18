@@ -28,48 +28,36 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ env.VM_HOST }} >> ~/.ssh/known_hosts
 
-      - name: 🛠️ Ensure rsync is installed on VM
-        run: |
-          ssh -i ~/.ssh/id_rsa ${{ env.VM_USER }}@${{ env.VM_HOST }} << 'EOF'
-            if ! command -v rsync &> /dev/null; then
-              sudo apt update && sudo apt install -y rsync
-            fi
-
       - name: 🚚 Sync Project to VM
         run: |
           rsync -az --delete -e "ssh -i ~/.ssh/id_rsa" ./ ${{ env.VM_USER }}@${{ env.VM_HOST }}:${{ env.PROJECT_DIR }}
 
-      - name: 🧠 Start Cloud SQL Proxy on VM
+      - name: 🔌 Start Cloud SQL Proxy on VM
         run: |
-          ssh -i ~/.ssh/id_rsa ${{ env.VM_USER }}@${{ env.VM_HOST }} << EOF
-            if ! pgrep -f "cloud_sql_proxy.*${{ env.CLOUD_SQL_INSTANCE }}" > /dev/null; then
+          ssh -i ~/.ssh/id_rsa ${{ env.VM_USER }}@${{ env.VM_HOST }} 'bash -s' << 'EOSH'
+            if ! pgrep -f "cloud_sql_proxy.*${CLOUD_SQL_INSTANCE}" > /dev/null; then
               echo "🔌 Starting Cloud SQL Proxy..."
-              nohup cloud_sql_proxy -dir=/cloudsql -instances=${{ env.CLOUD_SQL_INSTANCE }}=tcp:5432 > cloudsql.log 2>&1 &
+              nohup cloud_sql_proxy -dir=/cloudsql -instances=${CLOUD_SQL_INSTANCE}=tcp:5432 > cloudsql.log 2>&1 &
               sleep 2
-              echo "✅ Proxy started."
             else
               echo "⚠️ Cloud SQL Proxy already running."
             fi
+          EOSH
 
       - name: 🐳 Deploy Docker Compose Stack
         run: |
-          ssh -i ~/.ssh/id_rsa ${{ env.VM_USER }}@${{ env.VM_HOST }} << EOF
+          ssh -i ~/.ssh/id_rsa ${{ env.VM_USER }}@${{ env.VM_HOST }} 'bash -s' << 'EOSH'
             cd ${{ env.PROJECT_DIR }}
 
-            # Install Docker if missing
+            # Install Docker if needed
             if ! command -v docker &> /dev/null; then
               curl -fsSL https://get.docker.com -o get-docker.sh
               sudo sh get-docker.sh
               sudo usermod -aG docker $USER
-              newgrp docker
             fi
 
-            # Install Docker Compose if missing
+            # Install Docker Compose if needed
             if ! command -v docker-compose &> /dev/null; then
-              sudo apt-get update
-              sudo apt-get install -y docker-compose
+              sudo apt update
+              sudo apt install -y docker-compose
             fi
-
-            # Deploy stack
-            docker-compose down
-            docker-compose up -d --build
