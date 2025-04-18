@@ -34,7 +34,6 @@ jobs:
             if ! command -v rsync &> /dev/null; then
               sudo apt update && sudo apt install -y rsync
             fi
-EOF
 
       - name: 🚚 Sync Project to VM
         run: |
@@ -51,7 +50,6 @@ EOF
             else
               echo "⚠️ Cloud SQL Proxy already running."
             fi
-EOF
 
       - name: 🐳 Deploy Docker Compose Stack
         run: |
