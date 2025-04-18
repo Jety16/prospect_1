@@ -14,6 +14,7 @@ jobs:
   deploy:
     name: 🔄 Deploy Docker App using Proxy from VM
     runs-on: ubuntu-latest
+    environment: deploy
 
     steps:
       - name: 📥 Checkout code
