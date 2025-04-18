@@ -7,7 +7,7 @@ on:
 
 env:
   VM_USER: github-deploy
-  VM_HOST: YOUR_VM_EXTERNAL_IP
+  VM_HOST: ${{ secrets.VM_HOST }}
   PROJECT_DIR: /home/github-deploy/prospect-app
 
 jobs:
