@@ -1,3 +1,4 @@
+
 # 📘 README - Deploy de App Fullstack con Cloud SQL Proxy en GCP
 
 ## ✅ Objetivo
@@ -11,6 +12,8 @@ Desplegar una aplicación fullstack (frontend + backend en Docker) en una **VM d
 ```
 project-root/
 ├── docker-compose.yml
+├── nginx/
+│   └── default.conf
 ├── python_backend/
 ├── frontend/
 ├── postgres.sql
@@ -25,7 +28,7 @@ project-root/
 
 ### 1. 📦 Antes: Base de datos local (dentro de Docker)
 
-El `docker-compose.yml` original incluía un servicio `database` con PostgreSQL 16, así:
+El `docker-compose.yml` original incluía un servicio `database` con PostgreSQL 16:
 
 ```yaml
 services:
@@ -34,14 +37,13 @@ services:
     ...
 ```
 
-El backend se conectaba a `DB_HOST=prospect_db`, y se usaban volúmenes para persistencia y scripts de inicialización.
+El backend se conectaba a `DB_HOST=prospect_db`.
 
 ---
 
 ### 2. 🚀 Cambio: Usar Cloud SQL gestionado por GCP
 
-La base de datos se movió a **Cloud SQL (PostgreSQL)**.  
-Se eliminó el servicio `database` del `docker-compose.yml`, y ahora el backend se conecta a través del **Cloud SQL Proxy** que se ejecuta en la VM.
+Se eliminó el servicio `database` y ahora el backend se conecta a través de **Cloud SQL Proxy**, ejecutándose directamente en la VM.
 
 ---
 
@@ -55,11 +57,11 @@ sudo mv cloud-sql-proxy /usr/local/bin/
 
 ---
 
-### 4. 🔑 Autenticación con GCP (una sola vez)
-a
-Si estás usando una VM con permisos predeterminados (como Compute Engine default service account), no necesitás `credentials.json`.
+### 4. 🔑 Autenticación con GCP
 
-Pero, por si acaso, se autenticó:
+Si la VM usa la cuenta de servicio predeterminada de Compute Engine, no hace falta autenticación manual.
+
+Opcionalmente:
 
 ```bash
 gcloud auth application-default login
@@ -67,7 +69,7 @@ gcloud auth application-default login
 
 ---
 
-### 5. 🌐 Levantar Cloud SQL Proxy en la VM
+### 5. 🌐 Levantar el proxy
 
 ```bash
 nohup cloud-sql-proxy cloud-engineer-test-juanc:us-central1:files \
@@ -75,16 +77,11 @@ nohup cloud-sql-proxy cloud-engineer-test-juanc:us-central1:files \
   --port=5432 > cloudsql.log 2>&1 &
 ```
 
-Este comando:
-
-- Abre el puerto `5432` a conexiones externas (como Docker o tu PC local)
-- Se ejecuta en segundo plano con logs en `cloudsql.log`
-
 ---
 
-### 6. 🐳 Actualización del `docker-compose.yml`
+### 6. 🐳 `docker-compose.yml` actualizado
 
-Se quitó el servicio `database` y el backend ahora se conecta a la IP de la VM desde Docker:
+El backend ahora se conecta a través de `DB_HOST=172.17.0.1` (IP del host desde Docker):
 
 ```yaml
 services:
@@ -97,30 +94,98 @@ services:
       - DB_PASSWORD=postgres
       - DB_NAME=filesdb
 ```
+
 ---
 
-### 7. 🤖 GitHub Actions para deploy automático
+### 7. 🌍 NGINX como reverse proxy
 
-El workflow `deploy.yml`:
+Se agregó un contenedor `nginx` para servir como **punto de entrada único**, exponiendo solo el puerto `80`:
 
-- Se ejecuta al hacer `push` a `produccion`
-- Se conecta a la VM por SSH
-- Verifica si el proxy está corriendo (si no, lo arranca)
-- Hace `docker compose up -d --build`
+```nginx
+server {
+    listen 80;
+
+    location / {
+        proxy_pass http://frontend:4321;
+        ...
+    }
+
+    location /api/ {
+        rewrite ^/api(/.*)$ $1 break;
+        proxy_pass http://backend:5000;
+        add_header Access-Control-Allow-Origin *;
+        ...
+    }
+
+    location /events {
+        proxy_pass http://backend:5000/events;
+        proxy_buffering off;
+        add_header Access-Control-Allow-Origin *;
+        ...
+    }
+}
+```
+
+---
+
+### 8. 🌐 Reglas de firewall configuradas
+
+Solo se dejó expuesto:
+
+- ✅ `tcp:80` (HTTP)
+- ✅ `tcp:22` (SSH, si es necesario)
+
+Se eliminaron las reglas innecesarias:
+
+```bash
+gcloud compute firewall-rules delete allow-frontend-port
+gcloud compute firewall-rules delete allow-prospect-frontend
+gcloud compute firewall-rules delete allow-prospect-backend
+```
+
+---
+
+### 9. 🧠 Configuración del frontend (Astro + Vite)
+
+La app dejó de usar `PUBLIC_API_URL` con IPs duras.  
+Ahora, todas las llamadas se hacen **relativas**, aprovechando el proxy de NGINX:
+
+```ts
+const API_URL = "/api";
+eventSource = new EventSource("/events");
+await fetch("/api/upload", { ... });
+```
+
+Esto elimina problemas de CORS y simplifica el deployment 💯
+
+---
+
+### 10. 🤖 GitHub Actions para deploy automático
+
+En `.github/workflows/deploy.yml`, se automatiza:
+
+- `ssh` a la VM
+- Verificación de Cloud SQL Proxy
+- `docker compose up -d --build`
 
 ---
 
 ## ✅ Conclusión
 
-✅ App fullstack corriendo en Docker  
-✅ Base de datos totalmente gestionada en Cloud SQL  
-✅ Proxy corriendo en la VM  
-✅ Deploy automatizado con GitHub Actions
+✅ App fullstack en contenedores  
+✅ Base de datos gestionada por Cloud SQL  
+✅ Proxy SQL local corriendo en la VM  
+✅ Reverse proxy con NGINX (¡sin CORS!)  
+✅ Firewall seguro y controlado  
+✅ Deploys automáticos con GitHub Actions 🚀
 
 ---
 
-## 🧰 Futuras mejoras (opcional)
+## 🧰 Futuras mejoras
 
-- Hacer que el proxy se levante automáticamente con la VM (como servicio `systemd`)
-- Usar DNS internos de GCP para mayor resiliencia (`*.c.<PROJECT>.internal`)
-- Habilitar Secret Manager para variables sensibles
+- Levantar Cloud SQL Proxy como servicio con `systemd`
+- Usar Secret Manager para credenciales sensibles
+- Hacer build del frontend y servirlo como estático desde NGINX
+- Habilitar HTTPS con Let's Encrypt (Certbot)
+
+---
