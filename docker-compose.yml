@@ -1,26 +1,33 @@
 version: '3.8'
 
 services:
+  cloudsql-proxy:
+    image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.15.2
+    command:
+      - "/cloud-sql-proxy"
+      - "--instances=cloud-engineer-test-juanc:us-central1:files=tcp:5432"
+    networks:
+      - prospect-network
+
   backend:
     container_name: prospect_backend
     build:
       context: ./python_backend
       dockerfile: Dockerfile
     ports:
-      - "5000:5000"
+      - "8080:8080"
     volumes:
       - ./python_backend:/app
-    
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     environment:
-      - DB_HOST=/cloudsql/cloud-engineer-test-juanc:us-central1:files
-      - PORT=8080
+      - DB_HOST=cloudsql-proxy
+      - DB_PORT=5432
       - DB_USER=postgres
       - DB_PASSWORD=postgres
       - DB_NAME=filesdb
-      - DB_PORT=5432
+      - PORT=8080
       - CORS_ALLOWED_ORIGINS=http://localhost:4321
+    depends_on:
+      - cloudsql-proxy
     networks:
       - prospect-network
 
@@ -35,7 +42,7 @@ services:
       - ./frontend:/app
       - /app/node_modules
     environment:
-      - PUBLIC_API_URL=http://localhost:5000
+      - PUBLIC_API_URL=http://localhost:8080
     depends_on:
       - backend
     networks:
