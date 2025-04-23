@@ -5,6 +5,7 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from dotenv import load_dotenv
+from src.routes import register_routes
 
 load_dotenv()
 
@@ -18,7 +19,6 @@ def create_app():
     configure_database(app)
     db.init_app(app)
 
-    from app.routes import register_routes
     register_routes(app)
 
     with app.app_context():

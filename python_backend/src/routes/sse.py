@@ -2,7 +2,7 @@ import json
 import time
 import logging
 from flask import Blueprint, Response, stream_with_context
-from app.models import File
+from src.models import File
 from app import db
 
 sse_blueprint = Blueprint('sse', __name__)

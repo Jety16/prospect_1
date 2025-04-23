@@ -1,8 +1,8 @@
 import logging
 from flask import Blueprint, request, jsonify
-from app.models import File
+from src.models import File
 from app import db
-from app.services.document_ai import extract_from_document_ai
+from src.services.document_ai import extract_from_document_ai
 
 files_blueprint = Blueprint('files', __name__)
 
