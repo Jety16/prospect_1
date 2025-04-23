@@ -111,6 +111,12 @@ def extract_from_document_ai(file_bytes):
         total_match = re.search(r"TOTAL A PAGAR:\s*\n?\s*(\$\d[\d,]*)", full_text)
         if total_match:
             total = total_match.group(1).strip()
+        else:
+            print('total case 2')
+            total_match = re.search(r"(\$\d[\d,]*)", full_text)
+            print(total_match)
+            total = total_match.group(1).strip()
+
 
         # ============================ EXTRAER CMO / NOMBRE ============================
         # Buscar nombre por RFC:
