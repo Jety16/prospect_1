@@ -162,7 +162,7 @@
         extra.className = "file-extra-lines";
         extra.innerHTML = `
           <div>👤 Nombre: ${file.nombre || "<em>No disponible</em>"}</div>
-          <div>💰 Total: ${file.total ? `$${file.total}` : "<em>No disponible</em>"}</div>
+          <div>💰 Total: ${file.total ? `${file.total}` : "<em>No disponible</em>"}</div>
           <div>📅 RMU: ${file.rmu || "<em>No disponible</em>"}</div>
         `;
         wr.appendChild(extra);
