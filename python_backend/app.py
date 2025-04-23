@@ -220,7 +220,7 @@ def upload_file():
             logger.info(f"Archivo {file.filename} leído correctamente")
 
             # Procesar con Document AI
-            nombre, total, rmu = extract_from_document_ai(content)
+            nombre, total, rmu, cmo = extract_from_document_ai(content)
 
             new_file = File(
                 filename=file.filename,
