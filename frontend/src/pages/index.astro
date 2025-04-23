@@ -14,6 +14,8 @@
 
     .connection-status {
       padding: 10px;
+      margin: 10px;
+      border-radius: 5px;
       text-align: center;
       font-weight: bold;
     }
@@ -30,20 +32,86 @@
 
     .container {
       max-width: 800px;
-      margin: 20px auto;
-      padding: 0 15px;
+      margin: 0 auto;
+      padding: 20px;
     }
 
     .upload-section,
     .files-section {
       margin-bottom: 30px;
       padding: 20px;
-      border-radius: 6px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
       background-color: white;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
 
-    /* Botón y input */
+    ul.file-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    li.file-item {
+      padding: 15px;
+      border-bottom: 1px solid #eee;
+      transition: background-color 0.2s ease;
+    }
+
+    li.file-item:last-child {
+      border-bottom: none;
+    }
+
+    li.file-item:hover {
+      background-color: #f5f5f5;
+    }
+
+    .file-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .file-info span:first-child {
+      font-weight: 500;
+      color: #333;
+      flex: 1;
+    }
+
+    .file-date {
+      color: #666;
+      font-size: 0.9em;
+      white-space: nowrap;
+    }
+
+    .file-extra {
+      font-size: 0.9em;
+      color: #444;
+      margin-top: 8px;
+      padding-left: 10px;
+    }
+
+    .error-message,
+    .success-message {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 5px;
+      display: none;
+    }
+
+    .error-message {
+      background-color: #ffebee;
+      color: #c62828;
+      border: 1px solid #ffcdd2;
+    }
+
+    .success-message {
+      background-color: #e8f5e9;
+      color: #2e7d32;
+      border: 1px solid #c8e6c9;
+    }
+
     button {
       background-color: #2196f3;
       color: white;
@@ -51,12 +119,19 @@
       border: none;
       border-radius: 5px;
       cursor: pointer;
+      margin-top: 10px;
       font-size: 1em;
       transition: background-color 0.2s ease;
-      margin-top: 10px;
     }
-    button:hover { background-color: #1976d2; }
-    button:disabled { background-color: #ccc; cursor: not-allowed; }
+
+    button:hover {
+      background-color: #1976d2;
+    }
+
+    button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
 
     input[type="file"] {
       margin-top: 10px;
@@ -67,46 +142,22 @@
       cursor: pointer;
       transition: border-color 0.2s ease;
     }
-    input[type="file"]:hover { border-color: #2196f3; }
 
-    /* Mensajes */
-    .error-message,
-    .success-message {
-      margin-top: 10px;
-      padding: 10px;
-      border-radius: 5px;
-      display: none;
-    }
-    .error-message {
-      background-color: #ffebee;
-      color: #c62828;
-      border: 1px solid #ffcdd2;
-    }
-    .success-message {
-      background-color: #e8f5e9;
-      color: #2e7d32;
-      border: 1px solid #c8e6c9;
+    input[type="file"]:hover {
+      border-color: #2196f3;
     }
 
-    /* Lista de archivos subidos */
-    .uploaded-file {
+    h2 {
+      color: #333;
       margin-bottom: 20px;
-    }
-    .file-title {
-      font-weight: bold;
-      margin-bottom: 10px;
-      font-size: 15px;
-      border-bottom: 1px solid #ddd;
-      padding-bottom: 6px;
-    }
-    .file-extra div {
-      margin: 6px 0;
-      font-size: 14px;
+      font-size: 1.5em;
     }
   </style>
 </head>
 <body>
-  <div id="connectionStatus" class="connection-status disconnected">Desconectado</div>
+  <div id="connectionStatus" class="connection-status disconnected">
+    Desconectado
+  </div>
 
   <div class="container">
     <div class="upload-section">
@@ -119,74 +170,109 @@
 
     <div class="files-section">
       <h2>Archivos Subidos</h2>
-      <div id="fileList"></div>
+      <ul id="fileList" class="file-list"></ul>
     </div>
   </div>
 
   <script>
-    const API_URL = "";  // pon aquí tu URL base de la API
+    const API_URL = "";
+
     let isConnected = false;
     let eventSource = null;
 
     function updateConnectionStatus(connected) {
-      const el = document.getElementById("connectionStatus");
+      const statusElement = document.getElementById("connectionStatus");
+      if (!statusElement) return;
+
       isConnected = connected;
       if (connected) {
-        el.textContent = "Conectado";
-        el.className = "connection-status connected";
+        statusElement.textContent = "Conectado";
+        statusElement.className = "connection-status connected";
       } else {
-        el.textContent = "Desconectado";
-        el.className = "connection-status disconnected";
+        statusElement.textContent = "Desconectado";
+        statusElement.className = "connection-status disconnected";
       }
     }
 
-    function showMessage(el, msg) {
-      el.textContent = msg;
-      el.style.display = "block";
-      setTimeout(() => el.style.display = "none", 5000);
+    function showMessage(element, message) {
+      if (!element) return;
+      element.textContent = message;
+      element.style.display = "block";
+      setTimeout(() => {
+        if (element) element.style.display = "none";
+      }, 5000);
     }
 
     function updateFileList(files) {
-      const container = document.getElementById("fileList");
-      container.innerHTML = "";
-      files.forEach(file => {
-        const wrapper = document.createElement("div");
-        wrapper.className = "uploaded-file";
+      const fileList = document.getElementById("fileList");
+      if (!fileList) return;
 
-        // Título
-        const title = document.createElement("p");
-        title.className = "file-title";
-        title.textContent = `📄 ${file.filename} · ${new Date(file.uploaded_at).toLocaleString()}`;
-        wrapper.appendChild(title);
+      fileList.innerHTML = "";
 
-        // Datos extra
-        const extra = document.createElement("div");
-        extra.className = "file-extra";
-        extra.innerHTML = `
-          <div><strong>👤 Nombre:</strong> ${file.nombre || "<em>No disponible</em>"}</div>
-          <div><strong>💰 Total:</strong> ${file.total ? `$${file.total}` : "<em>No disponible</em>"}</div>
-          <div><strong>📅 RMU:</strong> ${file.rmu || "<em>No disponible</em>"}</div>
-        `;
-        wrapper.appendChild(extra);
+      files.forEach((file) => {
+        const li = document.createElement("li");
+        li.className = "file-item";
 
-        container.appendChild(wrapper);
+        const fileInfo = document.createElement("div");
+        fileInfo.className = "file-info";
+
+        const fileName = document.createElement("span");
+        fileName.textContent = `📄 ${file.filename}`;
+
+        const fileDate = document.createElement("span");
+        fileDate.className = "file-date";
+        fileDate.textContent = new Date(file.uploaded_at).toLocaleString();
+
+        fileInfo.appendChild(fileName);
+        fileInfo.appendChild(fileDate);
+        li.appendChild(fileInfo);
+
+        const extraData = document.createElement("div");
+        extraData.className = "file-extra";
+
+        if (file.nombre || file.total || file.rmu) {
+          const nombre = file.nombre ? `<strong>Nombre:</strong> ${file.nombre}` : "";
+          const total = file.total ? `<strong>Total:</strong> $${file.total}` : "";
+          const rmu = file.rmu ? `<strong>RMU:</strong> ${file.rmu}` : "";
+          extraData.innerHTML = [nombre, total, rmu].filter(Boolean).join(" · ");
+        } else {
+          extraData.innerHTML = `<em>Sin datos extraídos</em>`;
+        }
+
+        li.appendChild(extraData);
+        fileList.appendChild(li);
       });
     }
 
     function connectToServer() {
-      if (eventSource) eventSource.close();
+      if (eventSource) {
+        eventSource.close();
+      }
+
       eventSource = new EventSource(`${API_URL}/events`);
-      eventSource.onopen = () => updateConnectionStatus(true);
-      eventSource.onmessage = e => {
-        if (e.data !== "{}") {
-          try {
-            updateFileList(JSON.parse(e.data));
-          } catch {}
+
+      eventSource.onopen = () => {
+        console.log("SSE conectado");
+        updateConnectionStatus(true);
+      };
+
+      eventSource.onmessage = (event) => {
+        try {
+          if (event.data !== "{}") {
+            const files = JSON.parse(event.data);
+            updateFileList(files);
+          }
+        } catch (error) {
+          console.error("Error procesando datos SSE:", error);
         }
       };
-      eventSource.onerror = () => {
+
+      eventSource.onerror = (error) => {
+        console.error("Error SSE:", error);
         updateConnectionStatus(false);
-        eventSource.close();
+        if (eventSource) {
+          eventSource.close();
+        }
         setTimeout(connectToServer, 5000);
       };
     }
@@ -196,35 +282,49 @@
         showMessage(document.getElementById("errorMessage"), "No hay conexión con el servidor");
         return;
       }
-      const inFile = document.getElementById("fileInput");
-      const err = document.getElementById("errorMessage");
-      const ok = document.getElementById("successMessage");
-      if (!inFile.files.length) {
-        showMessage(err, "Por favor selecciona un archivo");
+
+      const fileInput = document.getElementById("fileInput");
+      const errorMessage = document.getElementById("errorMessage");
+      const successMessage = document.getElementById("successMessage");
+
+      if (!fileInput || !fileInput.files) return;
+      const file = fileInput.files[0];
+
+      if (!file) {
+        showMessage(errorMessage, "Por favor selecciona un archivo");
         return;
       }
 
-      const fd = new FormData();
-      fd.append("file", inFile.files[0]);
+      const formData = new FormData();
+      formData.append("file", file);
 
       try {
-        const resp = await fetch(`${API_URL}/upload`, { method: "POST", body: fd });
-        const data = await resp.json();
-        if (resp.ok) {
-          showMessage(ok, data.message || "Archivo subido correctamente");
-          inFile.value = "";
+        const response = await fetch(`${API_URL}/upload`, {
+          method: "POST",
+          body: formData,
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showMessage(successMessage, data.message || "Archivo subido correctamente");
+          fileInput.value = "";
         } else {
-          showMessage(err, data.error || "Error al subir el archivo");
+          showMessage(errorMessage, data.error || "Error al subir el archivo");
         }
-      } catch {
-        showMessage(err, "Error al subir el archivo.");
+      } catch (error) {
+        console.error("Error en la subida:", error);
+        showMessage(errorMessage, "Error al subir el archivo.");
         updateConnectionStatus(false);
       }
     }
 
     document.addEventListener("DOMContentLoaded", () => {
       connectToServer();
-      document.getElementById("uploadButton").addEventListener("click", uploadFile);
+      const uploadButton = document.getElementById("uploadButton");
+      if (uploadButton) {
+        uploadButton.addEventListener("click", uploadFile);
+      }
     });
   </script>
 </body>
