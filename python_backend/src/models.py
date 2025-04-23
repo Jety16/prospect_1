@@ -1,8 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 
-from .config import Config
-
 db = SQLAlchemy()
 
 class File(db.Model):
@@ -29,3 +27,4 @@ class File(db.Model):
             'total': self.total,
             'rmu': self.rmu
         }
+

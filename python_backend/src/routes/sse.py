@@ -1,3 +1,4 @@
+
 import json
 import time
 import logging
@@ -7,7 +8,6 @@ from ..models import File
 
 logger = logging.getLogger(__name__)
 sse_bp = Blueprint('sse', __name__)
-
 
 def generate_events(poll_interval: float = 1.0):
     last_ids = set()

@@ -1,3 +1,4 @@
+
 import os
 from dotenv import load_dotenv
 
@@ -19,4 +20,3 @@ class Config:
     DOCAI_PROJECT_ID = os.getenv('DOCAI_PROJECT_ID', '227652139161')
     DOCAI_LOCATION = os.getenv('DOCAI_LOCATION', 'us')
     DOCAI_PROCESSOR_ID = os.getenv('DOCAI_PROCESSOR_ID', '1e60d3bd63a0d751')
-

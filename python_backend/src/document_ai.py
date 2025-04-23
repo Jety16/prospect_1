@@ -1,3 +1,4 @@
+
 import re
 import logging
 from google.cloud import documentai_v1 as documentai
@@ -5,7 +6,6 @@ from google.cloud import documentai_v1 as documentai
 from .config import Config
 
 logger = logging.getLogger(__name__)
-
 
 def extract_from_document_ai(file_bytes: bytes):
     """
@@ -55,4 +55,3 @@ def _extract_total(text: str) -> str:
 def _extract_rmu(text: str) -> str:
     match = re.search(r"RMU\s*[:]*\s*([\d]{5}(?:\s+\d{2}-\d{2}-\d{2}.*?)?CFE)", text)
     return match.group(1).strip() if match else None
-
