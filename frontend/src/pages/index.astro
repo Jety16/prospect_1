@@ -144,18 +144,18 @@
       files.forEach(file => {
         const wr = document.createElement("div");
         wr.className = "uploaded-file";
+        // Separador
+        const sep = document.createElement("div");
+        sep.className = "separator";
+        sep.textContent = "────────────────────────────";
+        wr.appendChild(sep);
+
 
         // Cabecera
         const hdr = document.createElement("div");
         hdr.className = "file-header";
         hdr.textContent = `📄 ${file.filename} · ${new Date(file.uploaded_at).toLocaleString()}`;
         wr.appendChild(hdr);
-
-        // Separador
-        const sep = document.createElement("div");
-        sep.className = "separator";
-        sep.textContent = "────────────────────────────";
-        wr.appendChild(sep);
 
         // Campos extra
         const extra = document.createElement("div");
@@ -164,7 +164,6 @@
           <div>👤 Nombre: ${file.nombre || "<em>No disponible</em>"}</div>
           <div>💰 Total: ${file.total ? `$${file.total}` : "<em>No disponible</em>"}</div>
           <div>📅 RMU: ${file.rmu || "<em>No disponible</em>"}</div>
-          <div>🏢 CMO: ${file.cmo || "<em>No disponible</em>"}</div>
         `;
         wr.appendChild(extra);
 
