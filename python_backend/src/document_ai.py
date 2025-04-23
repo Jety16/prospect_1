@@ -61,6 +61,7 @@ def _extract_total(text: str) -> str | None:
 
 def _extract_rmu(text: str) -> str | None:
     """Captura códigos RMU que terminan en 'CFE'."""
-    if match := re.search(r"RMU\s*:?\\s*([\d]{5}(?:\s+\d{2}-\d{2}-\d{2}.*?)?CFE)", text):
-        return match.group(1).strip()
+    rmu_match = re.search(r"RMU\s*[:]*\s*([\d]{5}(?:\s+\d{2}-\d{2}-\d{2}.*?)?CFE)", text)
+    if rmu_match:
+        return rmu_match.group(1).strip()
     return None
