@@ -12,7 +12,7 @@ class File(db.Model):
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     nombre = db.Column(db.String(255), nullable=True)
-    total = db.Column(db.String(100), nullable=True)
+    total = db.Column(db.Numeric(12, 2), nullable=True)
     rmu = db.Column(db.String(100), nullable=True)
 
     def __repr__(self):
