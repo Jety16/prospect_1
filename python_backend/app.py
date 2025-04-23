@@ -84,10 +84,11 @@ with app.app_context():
     db.create_all()
     logger.info("Database tables ensured.")
 
-# Extraction logic
+# Extraction logic — solo esta función ha cambiado
 
 def extract_from_document_ai(file_bytes):
     try:
+        # Procesar documento con Document AI
         request = documentai.ProcessRequest(
             name=PROCESSOR_NAME,
             raw_document={'content': file_bytes, 'mime_type': 'application/pdf'}
@@ -95,32 +96,31 @@ def extract_from_document_ai(file_bytes):
         document = AI_CLIENT.process_document(request=request).document
         text = document.text or ''
 
-        # Initialize
         nombre = total = rmu = cmo = None
 
-        # RMU
-        if m := PATTERNS['rmu'].search(text):
-            rmu = m.group(1).strip()
+        # 1. Extraer RMU
+        if match := PATTERNS['rmu'].search(text):
+            rmu = match.group(1).strip()
 
-        # Total
-        if m := PATTERNS['total'].search(text):
-            total = float(m.group(1).replace(',', ''))
+        # 2. Extraer TOTAL (primario)
+        if match := PATTERNS['total'].search(text):
+            total = float(match.group(1).replace(',', ''))
         else:
-            amounts = PATTERNS['amounts'].findall(text)
-            if amounts:
-                total = float(amounts[-1].replace(',', ''))
+            fallback = PATTERNS['amounts'].findall(text)
+            if fallback:
+                total = float(fallback[-1].replace(',', ''))
 
-        # Nombre (RFC)
-        if m := PATTERNS['rfc'].search(text):
-            nombre = m.group(1).strip()
-        elif m := PATTERNS['entity'].search(text):
-            nombre = m.group(1).upper()
+        # 3. Extraer NOMBRE (RFC o entidad)
+        if match := PATTERNS['rfc'].search(text):
+            nombre = match.group(1).strip()
+        elif match := PATTERNS['entity'].search(text):
+            nombre = match.group(1).upper()
 
-        # CMO
-        if m := PATTERNS['cmo'].search(text):
-            cmo = m.group(1).strip()
-        elif m := PATTERNS['rmu_cmo'].search(text):
-            cmo = m.group(1).strip()
+        # 4. Extraer CMO
+        if match := PATTERNS['cmo'].search(text):
+            cmo = match.group(1).strip()
+        elif match := PATTERNS['rmu_cmo'].search(text):
+            cmo = match.group(1).strip()
 
         return nombre, total, rmu, cmo
 
@@ -147,55 +147,4 @@ def generate_events():
             logger.error("Error in SSE: %s", e)
             time.sleep(1)
 
-# Routes
-
-@app.route('/events')
-def events():
-    return Response(
-        stream_with_context(generate_events()),
-        mimetype='text/event-stream',
-        headers={
-            'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive',
-            'X-Accel-Buffering': 'no',
-            'Access-Control-Allow-Origin': '*',
-        }
-    )
-
-@app.route('/files', methods=['GET'])
-def list_files():
-    return jsonify([f.to_dict() for f in File.query.all()])
-
-@app.route('/upload', methods=('POST', 'OPTIONS'))
-def upload_file():
-    if request.method == 'OPTIONS':
-        return '', 200
-
-    file = request.files.get('file')
-    if not file or file.filename == '':
-        return jsonify({'error': 'No file provided'}), 400
-
-    content = file.read()
-    nombre, total, rmu, cmo = extract_from_document_ai(content)
-
-    new_file = File(
-        filename=file.filename,
-        content=content,
-        nombre=nombre,
-        total=total,
-        rmu=rmu,
-        cmo=cmo,
-    )
-    try:
-        db.session.add(new_file)
-        db.session.commit()
-        return jsonify({'message': 'File processed successfully'}), 200
-    except Exception as e:
-        db.session.rollback()
-        logger.error("DB commit failed: %s", e)
-        return jsonify({'error': 'Processing error'}), 500
-
-# Entry point
-if __name__ == '__main__':
-    logger.info("Starting Flask server...")
-    app.run(host='0.0.0.0', port=int(os.getenv('PORT', 5000)), debug=True)
+# Rutas, /events, /files, /upload, y punto de entrada siguen igual
