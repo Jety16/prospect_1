@@ -102,10 +102,18 @@ def extract_from_document_ai(file_bytes):
         if rmu_match:
             rmu = rmu_match.group(1).strip()
 
-        # Total (más robusto si usamos patrón de dinero en MXN)
-        total_match = re.search(r"TOTAL A PAGAR:\s*\$?([\d,]+\.\d{2})", full_text)
+        total_match = re.search(
+            r"TOTAL A PAGAR:\s*\$?([\d,]+(?:\.\d{2})?)",
+            full_text,
+            flags=re.IGNORECASE
+        )
+        
         if total_match:
-            total = total_match.group(1).strip()
+            # elimina separadores de miles y convierte a float
+            total_str = total_match.group(1).replace(",", "")
+            total = float(total_str)
+        else:
+            total = None
 
         # Nombre de compañía o entidad (ej: CFE o Banjercito)
         # Buscar algo con "RFC:" seguido de nombre
