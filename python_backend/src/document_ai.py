@@ -28,7 +28,7 @@ def extract_from_document_ai(file_bytes: bytes) -> tuple[str | None, str | None,
         logger.info("Documento procesado con éxito")
 
         nombre = _extract_nombre(full_text)
-        total  = float(_extract_total(full_text).replace('$', ''))
+        total  = float(_extract_total(full_text).replace('$', '').replace(',','.'))
         rmu    = _extract_rmu(full_text)
 
         logger.debug(f"Extracciones → nombre: {nombre!r}, total: {total!r}, rmu: {rmu!r}")
