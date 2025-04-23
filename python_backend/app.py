@@ -77,6 +77,12 @@ with app.app_context():
 import re
 
 
+import re
+import logging
+from google.cloud import documentai_v1beta3 as documentai
+
+logger = logging.getLogger(__name__)
+
 def extract_from_document_ai(file_bytes):
     try:
         client = documentai.DocumentProcessorServiceClient()
@@ -90,54 +96,66 @@ def extract_from_document_ai(file_bytes):
 
         logger.info("Texto completo extraído del documento")
 
-        # Inicialización
         nombre = None
         total = None
         rmu = None
+        cmo = None
 
-        # Buscar RMU
-        rmu_match = re.search(r"RMU\s*:\s*([\d]{5})", full_text)
+        # ============================ EXTRAER RMU =============================
+        rmu_match = re.search(r"RMU\s*[:]*\s*([\d]{5}(?:\s+\d{2}-\d{2}-\d{2}.*?)?CFE)", full_text)
         if rmu_match:
             rmu = rmu_match.group(1).strip()
 
-        # Buscar Total a pagar (puede haber múltiples, tomamos el último número antes de los textos "M.N.")
-        total_match = re.search(
-            r"TOTAL A PAGAR\s*:\s*\$?\s*([\d,]+\.\d{2}|\d+)", full_text, flags=re.IGNORECASE
-        )
+        # ============================ EXTRAER TOTAL ============================
+        # Caso general: TOTAL A PAGAR con número
+        total_match = re.search(r"TOTAL A PAGAR\s*:\s*\$?\s*([\d,]+\.\d{2}|\d+)", full_text, flags=re.IGNORECASE)
         if total_match:
-            total_str = total_match.group(1).replace(",", "")
-            total = float(total_str)
+            total = float(total_match.group(1).replace(",", ""))
         else:
-            # Fallback: Buscar último monto grande seguido de "PESOS M.N."
-            fallback_match = re.findall(
-                r"\$\s*([\d,]+\.\d{2}|\d+)\s*\n?\s*\(.*PESOS.*?M\.N\.\)", full_text, flags=re.IGNORECASE
-            )
-            if fallback_match:
-                total_str = fallback_match[-1].replace(",", "")
-                total = float(total_str)
+            # Fallback: última línea con "$xxxxx (PESOS M.N.)"
+            fallback_total = re.findall(r"\$\s*([\d,]+(?:\.\d{2})?)\s*\n?\s*\(.*?PESOS.*?M\.N\.\)", full_text)
+            if fallback_total:
+                total = float(fallback_total[-1].replace(",", ""))
 
-        # Buscar nombre de entidad (varía según el documento)
-        # Puede estar cerca del RFC o como nombre destacado
-        nombre_match = re.search(
-            r"RFC\s*:\s*(?:[A-Z]{3,4}\d{6}[A-Z0-9]{3})\s+(.*?)\n", full_text
-        )
-        if not nombre_match:
-            # Otra opción: buscar líneas en mayúsculas que no sean parte de dirección
-            nombre_match = re.search(
-                r"\n([A-ZÑ& ]{6,})\n.*?C\.?P\.\d{5}", full_text
-            )
-        if nombre_match:
-            nombre = nombre_match.group(1).strip()
+        # ============================ EXTRAER CMO / NOMBRE ============================
+        # Buscar nombre por RFC:
+        # Ej: RFC: CMO800703JV0 Razón Social: COUNTRY MOTORS ...
+        nombre_rfc_match = re.search(r"RFC\s*:\s*([A-Z]{3,4}\d{6}[A-Z0-9]{3})", full_text)
+        if nombre_rfc_match:
+            nombre = nombre_rfc_match.group(1)
 
+        # Caso especial: buscar razón social justo después
+        razon_social_match = re.search(r"Raz[oó]n Social\s*:\s*(.+)", full_text)
+        if razon_social_match:
+            razon = razon_social_match.group(1).strip()
+            # Algunas veces el campo nombre contiene CFE y la razón social el nombre real
+            if razon.upper() not in ["CFE", "COMISION FEDERAL DE ELECTRICIDAD"]:
+                nombre = razon
+
+        # Último fallback: línea destacada en mayúsculas seguida de dirección
+        if not nombre:
+            match = re.search(r"\n([A-ZÑ&\. ]{8,})\n.*C\.?P\.\d{5}", full_text)
+            if match:
+                nombre = match.group(1).strip()
+
+        # ============================ EXTRAER CMO ============================
+        # Buscar RFC: CMO800703JV0 o similar
+        cmo_match = re.search(r"RFC\s*:\s*(CMO\d{6}[A-Z0-9]{3})", full_text)
+        if cmo_match:
+            cmo = cmo_match.group(1)
+
+        # ============================ LOGS ============================
         logger.info(f"Nombre extraído: {nombre}")
         logger.info(f"Total extraído: {total}")
         logger.info(f"RMU extraído: {rmu}")
+        logger.info(f"CMO extraído: {cmo}")
 
-        return nombre, total, rmu
+        return nombre, total, rmu, cmo
 
     except Exception as e:
         logger.error(f"Error en Document AI: {str(e)}")
-        return None, None, None
+        return None, None, None, None
+
 
 # SSE
 def generate_events():
