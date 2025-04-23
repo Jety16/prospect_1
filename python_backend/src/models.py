@@ -24,7 +24,7 @@ class File(db.Model):
             'filename': self.filename,
             'uploaded_at': self.uploaded_at.isoformat(),
             'nombre': self.nombre,
-            'total': self.total,
+            'total': float(self.total) if self.total is not None else None,
             'rmu': self.rmu
         }
 
