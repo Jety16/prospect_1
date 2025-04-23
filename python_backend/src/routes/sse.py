@@ -3,6 +3,7 @@ import time
 import logging
 from flask import Blueprint, Response, stream_with_context
 from src.models import File
+from src import db
 
 sse_blueprint = Blueprint('sse', __name__)
 logger = logging.getLogger(__name__)
