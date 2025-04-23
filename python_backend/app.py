@@ -107,15 +107,10 @@ def extract_from_document_ai(file_bytes):
             rmu = rmu_match.group(1).strip()
 
         # ============================ EXTRAER TOTAL ============================
-        # Caso general: TOTAL A PAGAR con número
-        total_match = re.search(r"TOTAL A PAGAR\s*:\s*\$?\s*([\d,]+\.\d{2}|\d+)", full_text, flags=re.IGNORECASE)
+         # Buscar "TOTAL A PAGAR:" y tomar la línea siguiente con el $
+        total_match = re.search(r"TOTAL A PAGAR:\s*\n?\s*(\$\d[\d,]*)", full_text)
         if total_match:
-            total = float(total_match.group(1).replace(",", ""))
-        else:
-            # Fallback: última línea con "$xxxxx (PESOS M.N.)"
-            fallback_total = re.findall(r"\$\s*([\d,]+(?:\.\d{2})?)\s*\n?\s*\(.*?PESOS.*?M\.N\.\)", full_text)
-            if fallback_total:
-                total = float(fallback_total[-1].replace(",", ""))
+            total = total_match.group(1).strip()
 
         # ============================ EXTRAER CMO / NOMBRE ============================
         # Buscar nombre por RFC:
